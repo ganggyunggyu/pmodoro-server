@@ -6,6 +6,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { decodeJwt } from './shared/lib/decode-jwt';
 import { mongoConnect } from './db/mongoConnect';
+import { v4 as uuidv4 } from 'uuid';
 
 const app = express();
 const server = createServer(app);
@@ -25,23 +26,46 @@ const MessageSchema = new mongoose.Schema({
   roomId: String,
 });
 
-const userSchema = new mongoose.Schema({
-  userId: { type: String, required: true, unique: true },
-  kakaoId: Number,
-  displayName: String,
-  profileImg: String,
-  auth_time: Number,
-  exp: Number,
-  iat: Number,
-  iss: String,
-  sub: String,
-  aud: String,
-});
+const UserSchema = new mongoose.Schema(
+  {
+    userId: { type: String },
+    displayName: { type: String },
+    phoneNumber: { type: String },
+    firstArea: { type: String },
+    secondArea: { type: String },
+    position: { type: String },
+    skils: { type: [String], default: [] },
+    career: { type: String },
+    job: { type: String },
+
+    //로컬 회원가입에 해당
+    email: { type: String },
+    password: { type: String },
+
+    //개발자에만 해당
+    techStacks: { type: [String], default: [] },
+
+    // 카카오 관련 필드는 선택값
+    kakaoId: { type: Number },
+    isKakao: { type: Boolean },
+    profileImg: { type: String },
+    auth_time: { type: Number },
+    exp: { type: Number },
+    iat: { type: Number },
+    iss: { type: String },
+    sub: { type: String },
+    aud: { type: String },
+  },
+  { timestamps: true },
+);
+
+export const UserModel = mongoose.model('User', UserSchema);
 
 const ChatRoomSchema = new mongoose.Schema(
   {
     roomId: { type: String, required: true, unique: true },
     members: [{ type: String, required: true }],
+    otherUser: { type: Object },
   },
   {
     timestamps: true,
@@ -50,19 +74,6 @@ const ChatRoomSchema = new mongoose.Schema(
 export const ChatRoomModel = mongoose.model('ChatRoom', ChatRoomSchema);
 
 const MessageModel = mongoose.model('Message', MessageSchema);
-const UserModel = mongoose.model('User', userSchema);
-
-type User = {
-  aud: string;
-  auth_time: number;
-  exp: number;
-  iat: number;
-  iss: string;
-  sub: string;
-  displayName: string;
-  picture: string;
-  userId: string;
-};
 
 type ChatMessage = {
   roomId: string;
@@ -71,11 +82,8 @@ type ChatMessage = {
 };
 
 io.on('connection', (socket) => {
-  console.log('✅ 유저 접속:', socket.id);
-
   socket.on('joinRoom', (roomId: string) => {
     socket.join(roomId);
-    console.log(`📥 ${socket.id}님이 ${roomId} 방에 입장했습니다`);
   });
 
   socket.on('sendMessage', async (data: ChatMessage) => {
@@ -91,13 +99,9 @@ io.on('connection', (socket) => {
       content,
       timestamp: newMessage.timestamp,
     });
-
-    console.log(`💬 [${roomId}] ${senderId}: ${content}`);
   });
 
-  socket.on('disconnect', () => {
-    console.log('❌ 유저 퇴장:', socket.id);
-  });
+  socket.on('disconnect', () => {});
 });
 
 app.use(cors({ origin: '*', credentials: true }));
@@ -137,13 +141,11 @@ app.get('/auth/kakao-callback', async (req, res) => {
     let user = await UserModel.findOne({ userId });
 
     if (user) {
-      console.log('🟢 로그인 유저:', userId);
       res.json({ userInfo: user, isUser: true });
     } else {
-      console.log('🟡 신규 유저:', userId);
       const newUser = new UserModel(userInfo);
-      await newUser.save();
-      res.json({ userInfo: newUser, isUser: false });
+
+      res.json({ userInfo: newUser, isUser: false, isKakao: true });
     }
   } catch (error: any) {
     console.error('카카오 토큰 요청 실패:', error.response?.data);
@@ -153,26 +155,56 @@ app.get('/auth/kakao-callback', async (req, res) => {
   }
 });
 
+// 회원가입 라우트
+app.post('/user/join', async (req, res) => {
+  const signupData = req.body;
+
+  // 만약 카카오 아이디가 있으면 그대로 쓰고, 없으면 UUID 생성해서 넣기
+  const userId = signupData.userId || uuidv4();
+  const displayName = signupData.name;
+
+  const newUser = new UserModel({
+    ...signupData,
+    userId,
+    displayName,
+  });
+
+  await newUser.save();
+
+  res.json({ userInfo: newUser });
+});
+
 app.get('/api/chat/rooms', async (req, res) => {
   const { userId } = req.query;
 
-  if (!userId) res.status(400).json({ error: 'userId is required' });
+  if (!userId || typeof userId !== 'string') {
+    res.status(400).json({ error: 'userId is required' });
+    return;
+  }
 
-  const rooms = await ChatRoomModel.find({ members: userId });
-  res.json(rooms);
+  try {
+    const rooms = await ChatRoomModel.find({
+      members: { $in: [userId] },
+    });
+
+    res.json(rooms);
+  } catch (error) {
+    console.error('❌ 채팅방 목록 조회 오류:', error);
+    res.status(500).json({ error: '서버 오류 발생' });
+  }
 });
 
 app.post('/chat/room', async (req, res) => {
   const { userId, otherUserId } = req.body;
-
-  console.log(req);
 
   if (!userId || !otherUserId) {
     res.status(400).json({ error: 'userId와 otherUserId가 필요합니다.' });
     return;
   }
 
-  const roomId = [userId, otherUserId].sort().join('_');
+  const sortedIds = [userId, otherUserId].sort();
+  const roomId = sortedIds.join('_');
+  const otherUser = await UserModel.findById(otherUserId);
 
   try {
     let room = await ChatRoomModel.findOne({ roomId });
@@ -180,7 +212,8 @@ app.post('/chat/room', async (req, res) => {
     if (!room) {
       room = new ChatRoomModel({
         roomId,
-        members: [userId, otherUserId],
+        members: sortedIds,
+        otherUser,
       });
 
       await room.save();
@@ -193,15 +226,45 @@ app.post('/chat/room', async (req, res) => {
   }
 });
 
+app.get('/users', async (_, res) => {
+  const users = await UserModel.find();
+
+  res.json(users);
+});
+
+app.get('/api/chat/messages', async (req, res) => {
+  const { roomId } = req.query;
+
+  if (!roomId) {
+    res.status(400).json({ error: 'roomId is required' });
+  }
+
+  try {
+    const messages = await MessageModel.find({ roomId }).sort({ createdAt: 1 });
+
+    res.json(messages);
+  } catch (error) {
+    console.error('메시지 조회 실패:', error);
+    res.status(500).json({ error: '메시지 조회 중 오류 발생' });
+  }
+});
+
+app.post('/login', async (req, res) => {
+  const user = await UserModel.findOne({
+    email: req.body.email,
+    password: req.body.password,
+  });
+
+  if (user) res.json(user);
+
+  if (!user) res.status(500).json('로그인 실패');
+});
+
 mongoConnect()
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`🚀 Express 서버 ON 👉 http://localhost:${PORT}`);
-    });
+    app.listen(PORT, () => {});
 
-    server.listen(3001, () => {
-      console.log('🚀 Socket 서버 ON 👉 http://localhost:3001');
-    });
+    server.listen(3001, () => {});
   })
   .catch((error) => {
     console.error(error);
