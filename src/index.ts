@@ -7,7 +7,10 @@ import { Server } from 'socket.io';
 import { decodeJwt } from './shared/lib/decode-jwt';
 import { mongoConnect } from './db/mongoConnect';
 import { v4 as uuidv4 } from 'uuid';
+import { ChatRoomModel, MessageModel, UserModel } from './model/model';
+import dotenv from 'dotenv';
 
+dotenv.config();
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
@@ -18,62 +21,6 @@ const io = new Server(server, {
 });
 
 const PORT = 3000;
-
-const MessageSchema = new mongoose.Schema({
-  senderId: String,
-  content: String,
-  timestamp: { type: Date, default: Date.now },
-  roomId: String,
-});
-
-const UserSchema = new mongoose.Schema(
-  {
-    userId: { type: String },
-    displayName: { type: String },
-    phoneNumber: { type: String },
-    firstArea: { type: String },
-    secondArea: { type: String },
-    position: { type: String },
-    skils: { type: [String], default: [] },
-    career: { type: String },
-    job: { type: String },
-
-    //로컬 회원가입에 해당
-    email: { type: String },
-    password: { type: String },
-
-    //개발자에만 해당
-    techStacks: { type: [String], default: [] },
-
-    // 카카오 관련 필드는 선택값
-    kakaoId: { type: Number },
-    isKakao: { type: Boolean },
-    profileImg: { type: String },
-    auth_time: { type: Number },
-    exp: { type: Number },
-    iat: { type: Number },
-    iss: { type: String },
-    sub: { type: String },
-    aud: { type: String },
-  },
-  { timestamps: true },
-);
-
-export const UserModel = mongoose.model('User', UserSchema);
-
-const ChatRoomSchema = new mongoose.Schema(
-  {
-    roomId: { type: String, required: true, unique: true },
-    members: [{ type: String, required: true }],
-    otherUser: { type: Object },
-  },
-  {
-    timestamps: true,
-  },
-);
-export const ChatRoomModel = mongoose.model('ChatRoom', ChatRoomSchema);
-
-const MessageModel = mongoose.model('Message', MessageSchema);
 
 type ChatMessage = {
   roomId: string;
@@ -174,7 +121,7 @@ app.post('/user/join', async (req, res) => {
   res.json({ userInfo: newUser });
 });
 
-app.get('/api/chat/rooms', async (req, res) => {
+app.get('/chat/rooms', async (req, res) => {
   const { userId } = req.query;
 
   if (!userId || typeof userId !== 'string') {
@@ -232,7 +179,7 @@ app.get('/users', async (_, res) => {
   res.json(users);
 });
 
-app.get('/api/chat/messages', async (req, res) => {
+app.get('/chat/messages', async (req, res) => {
   const { roomId } = req.query;
 
   if (!roomId) {
@@ -249,7 +196,7 @@ app.get('/api/chat/messages', async (req, res) => {
   }
 });
 
-app.post('/login', async (req, res) => {
+app.post('/user/login', async (req, res) => {
   const user = await UserModel.findOne({
     email: req.body.email,
     password: req.body.password,
@@ -258,6 +205,12 @@ app.post('/login', async (req, res) => {
   if (user) res.json(user);
 
   if (!user) res.status(500).json('로그인 실패');
+});
+
+app.get('/user/:userId', async (req, res) => {
+  const user = await UserModel.findById(req.params.userId);
+
+  res.json(user);
 });
 
 mongoConnect()
