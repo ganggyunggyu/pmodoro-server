@@ -9,10 +9,10 @@ export const mongoConnect = async () => {
   }
 
   try {
-    await mongoose.connect(MONGO_URI as string);
-    // await mongoose.connect(
-    //   'mongodb+srv://kkk819:12qwaszx@cluster0.uw5n95x.mongodb.net/pmodoro',
-    // );
+    // await mongoose.connect(MONGO_URI as string);
+    await mongoose.connect(
+      'mongodb+srv://kkk819:12qwaszx@cluster0.uw5n95x.mongodb.net/pmodoro',
+    );
     console.log('✅ MongoDB 연결 완료!');
   } catch (error) {
     console.error('❌ MongoDB 연결 실패:', error);
