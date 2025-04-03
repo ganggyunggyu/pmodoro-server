@@ -2,7 +2,8 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 dotenv.config();
 export const mongoConnect = async () => {
-  const MONGO_URI = process.env.MONGO_URI;
+  const { PORT, MONGO_URI } = process.env;
+
   console.log(MONGO_URI);
   if (mongoose.connection.readyState === 1) {
     console.log('🔁 Already connected to MongoDB');

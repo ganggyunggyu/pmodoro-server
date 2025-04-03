@@ -11,7 +11,6 @@ import { ChatRoomModel, MessageModel, UserModel } from './model/model';
 import dotenv from 'dotenv';
 
 dotenv.config();
-
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
