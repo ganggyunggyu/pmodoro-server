@@ -8,9 +8,7 @@ import { decodeJwt } from './shared/lib/decode-jwt';
 import { mongoConnect } from './db/mongoConnect';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatRoomModel, MessageModel, UserModel } from './model/model';
-import dotenv from 'dotenv';
 
-dotenv.config();
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
