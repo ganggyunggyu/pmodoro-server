@@ -14,17 +14,17 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mongoConnect = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const mongoConnect = () => __awaiter(void 0, void 0, void 0, function* () {
-    const MONGO_URI = process.env.MONGO_URI;
-    console.log(MONGO_URI);
+    const { MONGO_URI } = process.env;
     if (mongoose_1.default.connection.readyState === 1) {
         console.log('🔁 Already connected to MongoDB');
         return;
     }
     try {
-        // await mongoose.connect(MONGO_URI as string);
-        yield mongoose_1.default.connect('mongodb+srv://kkk819:12qwaszx@cluster0.uw5n95x.mongodb.net/pmodoro');
-        console.log('✅ MongoDB 연결 완료!');
+        yield mongoose_1.default.connect(MONGO_URI);
+        console.log('MONGO DB 연결');
     }
     catch (error) {
         console.error('❌ MongoDB 연결 실패:', error);

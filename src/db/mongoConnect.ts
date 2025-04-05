@@ -2,20 +2,16 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 dotenv.config();
 export const mongoConnect = async () => {
-  const { PORT, MONGO_URI } = process.env;
+  const { MONGO_URI } = process.env;
 
-  console.log(MONGO_URI);
   if (mongoose.connection.readyState === 1) {
     console.log('🔁 Already connected to MongoDB');
     return;
   }
 
   try {
-    // await mongoose.connect(MONGO_URI as string);
-    await mongoose.connect(
-      'mongodb+srv://kkk819:12qwaszx@cluster0.uw5n95x.mongodb.net/pmodoro',
-    );
-    console.log('✅ MongoDB 연결 완료!');
+    await mongoose.connect(MONGO_URI as string);
+    console.log('MONGO DB 연결');
   } catch (error) {
     console.error('❌ MongoDB 연결 실패:', error);
     process.exit(1);
