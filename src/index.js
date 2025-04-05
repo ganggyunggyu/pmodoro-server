@@ -30,6 +30,7 @@ const io = new socket_io_1.Server(server, {
         credentials: true,
     },
 });
+//서버 셋팅
 io.on('connection', (socket) => {
     socket.on('joinRoom', (roomId) => {
         socket.join(roomId);
@@ -50,6 +51,8 @@ io.on('connection', (socket) => {
 });
 app.use((0, cors_1.default)({ origin: '*', credentials: true }));
 app.use(express_1.default.json());
+//라우트 정의
+//Auth
 app.get('/auth/kakao-callback', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
     const code = req.query.code;
@@ -90,7 +93,25 @@ app.get('/auth/kakao-callback', (req, res) => __awaiter(void 0, void 0, void 0, 
             .json({ error: '카카오 토큰 요청 실패', details: (_b = error.response) === null || _b === void 0 ? void 0 : _b.data });
     }
 }));
-// 회원가입 라우트
+//User
+app.get('/users', (_, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const users = yield model_1.UserModel.find();
+    res.json(users);
+}));
+app.post('/user/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const user = yield model_1.UserModel.findOne({
+        email: req.body.email,
+        password: req.body.password,
+    });
+    if (user)
+        res.json(user);
+    if (!user)
+        res.status(500).json('로그인 실패');
+}));
+app.get('/user/:userId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const user = yield model_1.UserModel.findById(req.params.userId);
+    res.json(user);
+}));
 app.post('/user/join', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const signupData = req.body;
     console.log(signupData);
@@ -98,6 +119,7 @@ app.post('/user/join', (req, res) => __awaiter(void 0, void 0, void 0, function*
     yield newUser.save();
     res.json({ userInfo: newUser });
 }));
+//Chat
 app.get('/chat/rooms', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { userId } = req.query;
     if (!userId || typeof userId !== 'string') {
@@ -105,20 +127,16 @@ app.get('/chat/rooms', (req, res) => __awaiter(void 0, void 0, void 0, function*
         return;
     }
     try {
-        // userId를 ObjectId로 변환
         const userObjectId = new mongoose_1.default.Types.ObjectId(userId);
-        // 채팅방 목록을 userId가 포함된 채팅방으로 검색
         const rooms = yield model_1.ChatRoomModel.find({
             members: { $in: [userObjectId] },
         }).exec();
-        // 채팅방마다 다른 유저 정보를 추가하여 응답
         const roomsWithUserInfo = yield Promise.all(rooms.map((room) => __awaiter(void 0, void 0, void 0, function* () {
             const otherMembers = room.members.filter((member) => member.toString() !== userObjectId.toString());
-            // 다른 유저들의 정보 가져오기 (여기서는 다른 유저들의 `userId`로 정보를 찾는 예시)
             const otherUserInfos = yield model_1.UserModel.find({
                 _id: { $in: otherMembers },
             })
-                .select('displayName profileImg') // 필요한 정보만 선택
+                .select('displayName profileImg')
                 .exec();
             const messages = yield model_1.MessageModel.find({
                 roomId: room.roomId,
@@ -126,10 +144,8 @@ app.get('/chat/rooms', (req, res) => __awaiter(void 0, void 0, void 0, function*
             console.log(messages.length);
             console.log(messages[messages.length - 1]);
             const lastMessage = messages[messages.length - 1];
-            return Object.assign(Object.assign({}, room.toObject()), { otherUser: otherUserInfos, // 다른 유저 정보 추가
-                lastMessage });
+            return Object.assign(Object.assign({}, room.toObject()), { otherUser: otherUserInfos, lastMessage });
         })));
-        // 응답 시 채팅방과 함께 다른 유저 정보 포함
         res.json(roomsWithUserInfo);
     }
     catch (error) {
@@ -143,8 +159,6 @@ app.post('/chat/room', (req, res) => __awaiter(void 0, void 0, void 0, function*
         res.status(400).json({ error: 'userId와 otherUserId가 필요합니다.' });
         return;
     }
-    const user = yield model_1.UserModel.findById(userId);
-    const otherUser = yield model_1.UserModel.findById(otherUserId);
     const sortedIds = [userId, otherUserId].sort();
     const roomId = sortedIds.join('_');
     try {
@@ -163,10 +177,6 @@ app.post('/chat/room', (req, res) => __awaiter(void 0, void 0, void 0, function*
         res.status(500).json({ error: '채팅방 생성 중 오류 발생' });
     }
 }));
-app.get('/users', (_, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const users = yield model_1.UserModel.find();
-    res.json(users);
-}));
 app.get('/chat/messages', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { roomId } = req.query;
     if (!roomId) {
@@ -180,20 +190,6 @@ app.get('/chat/messages', (req, res) => __awaiter(void 0, void 0, void 0, functi
         console.error('메시지 조회 실패:', error);
         res.status(500).json({ error: '메시지 조회 중 오류 발생' });
     }
-}));
-app.post('/user/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const user = yield model_1.UserModel.findOne({
-        email: req.body.email,
-        password: req.body.password,
-    });
-    if (user)
-        res.json(user);
-    if (!user)
-        res.status(500).json('로그인 실패');
-}));
-app.get('/user/:userId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const user = yield model_1.UserModel.findById(req.params.userId);
-    res.json(user);
 }));
 (0, mongoConnect_1.mongoConnect)()
     .then(() => {
