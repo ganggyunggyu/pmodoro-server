@@ -15,14 +15,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const axios_1 = __importDefault(require("axios"));
 const cors_1 = __importDefault(require("cors"));
+const mongoose_1 = __importDefault(require("mongoose"));
 const http_1 = require("http");
 const socket_io_1 = require("socket.io");
 const decode_jwt_1 = require("./shared/lib/decode-jwt");
 const mongoConnect_1 = require("./db/mongoConnect");
-const uuid_1 = require("uuid");
 const model_1 = require("./model/model");
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
+const { PORT, SOCKET_PORT, KAKAO_GRANT_TYPE, KAKAO_CLIENT_ID, KAKAO_REDIRECT_URI, } = process.env;
 const app = (0, express_1.default)();
 const server = (0, http_1.createServer)(app);
 const io = new socket_io_1.Server(server, {
@@ -31,7 +30,6 @@ const io = new socket_io_1.Server(server, {
         credentials: true,
     },
 });
-const PORT = 3000;
 io.on('connection', (socket) => {
     socket.on('joinRoom', (roomId) => {
         socket.join(roomId);
@@ -58,9 +56,9 @@ app.get('/auth/kakao-callback', (req, res) => __awaiter(void 0, void 0, void 0, 
     if (!code)
         res.status(400).json({ error: '인증 코드가 없습니다.' });
     const requestKakaoToken = {
-        grant_type: 'authorization_code',
-        client_id: '592b7c49df0845263bf62a37723069f2',
-        redirect_uri: 'https://localhost:5173/auth/kakao-callback',
+        grant_type: KAKAO_GRANT_TYPE,
+        client_id: KAKAO_CLIENT_ID,
+        redirect_uri: KAKAO_REDIRECT_URI,
         code,
     };
     try {
@@ -72,18 +70,17 @@ app.get('/auth/kakao-callback', (req, res) => __awaiter(void 0, void 0, void 0, 
         const idToken = result.data.id_token;
         if (!idToken)
             res.status(400).json({ error: 'id_token이 없습니다.' });
-        const userInfo = (0, decode_jwt_1.decodeJwt)(idToken);
-        userInfo.displayName = userInfo.nickname;
-        const { userId } = userInfo;
-        if (!userId)
+        const kakaoAuthInfo = (0, decode_jwt_1.decodeJwt)(idToken);
+        const displayName = kakaoAuthInfo.nickname;
+        const { kakaoId } = kakaoAuthInfo;
+        if (!kakaoId)
             res.status(400).json({ error: '사용자 ID가 없습니다.' });
-        let user = yield model_1.UserModel.findOne({ userId });
+        const user = yield model_1.UserModel.findOne({ 'kakaoAuthInfo.kakaoId': kakaoId });
         if (user) {
             res.json({ userInfo: user, isUser: true });
         }
         else {
-            const newUser = new model_1.UserModel(userInfo);
-            res.json({ userInfo: newUser, isUser: false, isKakao: true });
+            res.json({ displayName, kakaoAuthInfo, isUser: false });
         }
     }
     catch (error) {
@@ -96,11 +93,8 @@ app.get('/auth/kakao-callback', (req, res) => __awaiter(void 0, void 0, void 0, 
 // 회원가입 라우트
 app.post('/user/join', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const signupData = req.body;
-    // 만약 카카오 아이디가 있으면 그대로 쓰고, 없으면 UUID 생성해서 넣기
-    const userId = signupData.userId || (0, uuid_1.v4)();
-    const displayName = signupData.name;
-    const newUser = new model_1.UserModel(Object.assign(Object.assign({}, signupData), { userId,
-        displayName }));
+    console.log(signupData);
+    const newUser = new model_1.UserModel(Object.assign({}, signupData));
     yield newUser.save();
     res.json({ userInfo: newUser });
 }));
@@ -111,10 +105,32 @@ app.get('/chat/rooms', (req, res) => __awaiter(void 0, void 0, void 0, function*
         return;
     }
     try {
+        // userId를 ObjectId로 변환
+        const userObjectId = new mongoose_1.default.Types.ObjectId(userId);
+        // 채팅방 목록을 userId가 포함된 채팅방으로 검색
         const rooms = yield model_1.ChatRoomModel.find({
-            members: { $in: [userId] },
-        });
-        res.json(rooms);
+            members: { $in: [userObjectId] },
+        }).exec();
+        // 채팅방마다 다른 유저 정보를 추가하여 응답
+        const roomsWithUserInfo = yield Promise.all(rooms.map((room) => __awaiter(void 0, void 0, void 0, function* () {
+            const otherMembers = room.members.filter((member) => member.toString() !== userObjectId.toString());
+            // 다른 유저들의 정보 가져오기 (여기서는 다른 유저들의 `userId`로 정보를 찾는 예시)
+            const otherUserInfos = yield model_1.UserModel.find({
+                _id: { $in: otherMembers },
+            })
+                .select('displayName profileImg') // 필요한 정보만 선택
+                .exec();
+            const messages = yield model_1.MessageModel.find({
+                roomId: room.roomId,
+            });
+            console.log(messages.length);
+            console.log(messages[messages.length - 1]);
+            const lastMessage = messages[messages.length - 1];
+            return Object.assign(Object.assign({}, room.toObject()), { otherUser: otherUserInfos, // 다른 유저 정보 추가
+                lastMessage });
+        })));
+        // 응답 시 채팅방과 함께 다른 유저 정보 포함
+        res.json(roomsWithUserInfo);
     }
     catch (error) {
         console.error('❌ 채팅방 목록 조회 오류:', error);
@@ -127,16 +143,16 @@ app.post('/chat/room', (req, res) => __awaiter(void 0, void 0, void 0, function*
         res.status(400).json({ error: 'userId와 otherUserId가 필요합니다.' });
         return;
     }
+    const user = yield model_1.UserModel.findById(userId);
+    const otherUser = yield model_1.UserModel.findById(otherUserId);
     const sortedIds = [userId, otherUserId].sort();
     const roomId = sortedIds.join('_');
-    const otherUser = yield model_1.UserModel.findById(otherUserId);
     try {
         let room = yield model_1.ChatRoomModel.findOne({ roomId });
         if (!room) {
             room = new model_1.ChatRoomModel({
                 roomId,
                 members: sortedIds,
-                otherUser,
             });
             yield room.save();
         }
@@ -182,7 +198,9 @@ app.get('/user/:userId', (req, res) => __awaiter(void 0, void 0, void 0, functio
 (0, mongoConnect_1.mongoConnect)()
     .then(() => {
     app.listen(PORT, () => { });
-    server.listen(3001, () => { });
+    console.log(`${PORT}포트 서버 연결`);
+    server.listen(SOCKET_PORT, () => { });
+    console.log(`${SOCKET_PORT}포트 소켓서버 연결`);
 })
     .catch((error) => {
     console.error(error);
