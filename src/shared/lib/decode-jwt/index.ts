@@ -10,11 +10,14 @@ export const decodeJwt = (token: string) => {
 
   const result = JSON.parse(jsonPayload);
 
-  const userId = result.aud + result.sub;
+  const kakaoId = result.aud + result.sub;
+
+  const profileImg = result.picture;
 
   const userInfo = {
-    userId: userId,
+    kakaoId,
     ...result,
+    profileImg,
   };
 
   return userInfo;
