@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 
 const MessageSchema = new mongoose.Schema(
   {
@@ -10,33 +10,52 @@ const MessageSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-const UserSchema = new mongoose.Schema(
-  {
-    userId: { type: String, required: true },
-    displayName: { type: String, required: true },
-    phoneNumber: { type: String },
-    firstArea: { type: String },
-    secondArea: { type: String },
-    position: { type: String },
-    detailPositionList: { type: [String] },
+type KakaoAuthInfo = {
+  kakaoId: string;
+  profileImg: string;
+  auth_time: number;
+  exp: number;
+  iat: number;
+  iss: string;
+  sub: string;
+  aud: string;
+};
 
-    career: { type: String },
-    job: { type: String },
+export type Message = {
+  roomId: string;
+  senderId: string;
+  content: string;
+};
+
+// KakaoAuthInfo 서브스키마 정의
+const KakaoAuthInfoSchema = new Schema<KakaoAuthInfo>({
+  kakaoId: { type: String, required: true },
+  profileImg: { type: String, required: false },
+  auth_time: { type: Number, required: true },
+  exp: { type: Number, required: true },
+  iat: { type: Number, required: true },
+  iss: { type: String, required: true },
+  sub: { type: String, required: true },
+  aud: { type: String, required: true },
+});
+
+// UserSchema 정의
+const UserSchema = new Schema(
+  {
+    displayName: { type: String, required: true },
+    position: { type: String, required: true },
+    skills: { type: [String], required: true },
+    career: { type: String, required: true },
+    isOnline: { type: Boolean, required: true },
+    description: { type: String, required: true },
 
     email: { type: String },
     password: { type: String },
+    firstArea: { type: String },
+    secondArea: { type: String },
+    phoneNumber: { type: String },
 
-    techStacks: { type: [String], default: [] },
-
-    kakaoId: { type: Number },
-    isKakao: { type: Boolean },
-    profileImg: { type: String },
-    auth_time: { type: Number },
-    exp: { type: Number },
-    iat: { type: Number },
-    iss: { type: String },
-    sub: { type: String },
-    aud: { type: String },
+    kakaoAuthInfo: { type: KakaoAuthInfoSchema, required: false },
   },
   { timestamps: true },
 );
@@ -58,8 +77,18 @@ const projectSchema = new mongoose.Schema(
 const ChatRoomSchema = new mongoose.Schema(
   {
     roomId: { type: String, required: true, unique: true },
-    members: [{ type: String, required: true }],
-    otherUser: { type: Object },
+    members: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User', // User 모델을 참조
+      },
+    ],
+    messages: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Message', // 메시지 모델을 참조
+      },
+    ],
   },
   {
     timestamps: true,
