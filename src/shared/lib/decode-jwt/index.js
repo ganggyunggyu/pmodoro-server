@@ -9,8 +9,9 @@ const decodeJwt = (token) => {
         .map((c) => `%${('00' + c.charCodeAt(0).toString(16)).slice(-2)}`)
         .join(''));
     const result = JSON.parse(jsonPayload);
-    const userId = result.aud + result.sub;
-    const userInfo = Object.assign({ userId: userId }, result);
+    const kakaoId = result.aud + result.sub;
+    const profileImg = result.picture;
+    const userInfo = Object.assign(Object.assign({ kakaoId }, result), { profileImg });
     return userInfo;
 };
 exports.decodeJwt = decodeJwt;
