@@ -79,7 +79,6 @@ app.get('/auth/kakao-callback', async (req, res) => {
     const idToken = result.data.id_token;
     if (!idToken) res.status(400).json({ error: 'id_token이 없습니다.' });
 
-    // const kakaoAuthInfo = { ...decodeJwt(idToken), ...kakaoAuthData };
     const kakaoAuthInfo = decodeJwt(idToken);
 
     console.log(kakaoAuthInfo);
@@ -104,26 +103,26 @@ app.get('/auth/kakao-callback', async (req, res) => {
 });
 
 app.get('/auth/login-check/kakao', async (req, res) => {
-  const LOGIN_EXPIRE_TIME = 3600; // 로그인 유효시간 1시간 (초 단위)
+  // const LOGIN_EXPIRE_TIME = 3600;
   console.log(req.query);
-  // req.query.auth_time을 숫자형으로 변환
-  const authTime = parseInt(req.query.auth_time as string, 10);
+
+  // const authTime = parseInt(req.query.auth_time as string, 10);
   const userId = req.query.userId;
 
-  const isSessionValid = (authTime: number): boolean => {
-    const currentTime = Math.floor(Date.now() / 1000); // 현재 시간 (초 단위)
-    return currentTime - authTime < LOGIN_EXPIRE_TIME; // 유효시간 이내인지 확인
-  };
+  // const isSessionValid = (authTime: number): boolean => {
+  //   const currentTime = Math.floor(Date.now() / 1000);
+  //   return currentTime - authTime < LOGIN_EXPIRE_TIME;
+  // };
 
-  if (isSessionValid(authTime)) {
-    console.log('로그인 유지 중');
-    const user = await UserModel.findById(userId);
-    console.log(user);
-    res.status(200).send(user);
-  } else {
-    console.log('로그인 만료됨');
-    res.status(401).send('로그인 만료됨');
-  }
+  console.log('로그인 유지 중');
+  const user = await UserModel.findById(userId);
+  console.log(user);
+  res.status(200).send(user);
+  // if (isSessionValid(authTime)) {
+  // } else {
+  //   console.log('로그인 만료됨');
+  //   res.status(401).send('로그인 만료됨');
+  // }
 });
 
 //User
@@ -134,10 +133,64 @@ app.get('/users', async (_, res) => {
   res.json(users);
 });
 
-const SearchQueryType = {};
+type SearchQueryType = {
+  position?: string;
+  skills?: string[];
+  carrear?: string;
+  isOnline?: boolean | string;
+
+  firstArea?: string;
+  secondArea?: string;
+
+  q?: string;
+};
 
 app.get('/users/search', async (req, res) => {
-  const query = req.query;
+  const query = req.query as SearchQueryType;
+
+  const searchConditions: any = {};
+
+  if (query.position && query.position !== '전체') {
+    searchConditions.position = query.position; // '전체'가 아닌 경우에만 position 추가
+  }
+  if (query.skills && query.skills.length > 0) {
+    searchConditions.skills = { $in: query.skills };
+  }
+
+  if (query.carrear) {
+    searchConditions.carrear = query.carrear;
+  }
+
+  if (query.isOnline !== undefined) {
+    searchConditions.isOnline = query.isOnline === 'true'; // 문자열을 불리언으로 변환
+
+    console.log(searchConditions.isOnline);
+  }
+
+  if (query.firstArea) {
+    searchConditions.firstArea = query.firstArea;
+  }
+
+  if (query.secondArea) {
+    searchConditions.secondArea = query.secondArea;
+  }
+
+  if (query.q) {
+    searchConditions.$or = [
+      { name: { $regex: query.q, $options: 'i' } },
+      { email: { $regex: query.q, $options: 'i' } },
+    ];
+  }
+
+  console.log(searchConditions);
+
+  try {
+    const users = await UserModel.find(searchConditions);
+    res.json(users);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('서버 에러');
+  }
 });
 
 app.post('/user/login', async (req, res) => {

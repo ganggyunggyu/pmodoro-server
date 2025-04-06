@@ -70,11 +70,9 @@ app.get('/auth/kakao-callback', (req, res) => __awaiter(void 0, void 0, void 0, 
                 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
             },
         });
-        const kakaoAuthData = result;
         const idToken = result.data.id_token;
         if (!idToken)
             res.status(400).json({ error: 'id_token이 없습니다.' });
-        // const kakaoAuthInfo = { ...decodeJwt(idToken), ...kakaoAuthData };
         const kakaoAuthInfo = (0, decode_jwt_1.decodeJwt)(idToken);
         console.log(kakaoAuthInfo);
         const displayName = kakaoAuthInfo.nickname;
@@ -96,30 +94,80 @@ app.get('/auth/kakao-callback', (req, res) => __awaiter(void 0, void 0, void 0, 
             .json({ error: '카카오 토큰 요청 실패', details: (_a = error.response) === null || _a === void 0 ? void 0 : _a.data });
     }
 }));
-app.get('auth/login-check/kakao', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const LOGIN_EXPIRE_TIME = 3600; // 로그인 유효시간 1시간 (초 단위)
-    console.log('refresh');
-    // req.query.auth_time을 숫자형으로 변환
-    const authTime = parseInt(req.query.auth_time, 10);
+app.get('/auth/login-check/kakao', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    // const LOGIN_EXPIRE_TIME = 3600;
+    console.log(req.query);
+    // const authTime = parseInt(req.query.auth_time as string, 10);
     const userId = req.query.userId;
-    const isSessionValid = (authTime) => {
-        const currentTime = Math.floor(Date.now() / 1000); // 현재 시간 (초 단위)
-        return currentTime - authTime < LOGIN_EXPIRE_TIME; // 유효시간 이내인지 확인
-    };
-    if (isSessionValid(authTime)) {
-        console.log('로그인 유지 중');
-        const user = yield model_1.UserModel.findById(userId);
-        res.status(200).send(user);
-    }
-    else {
-        console.log('로그인 만료됨');
-        res.status(401).send('로그인 만료됨');
-    }
+    // const isSessionValid = (authTime: number): boolean => {
+    //   const currentTime = Math.floor(Date.now() / 1000);
+    //   return currentTime - authTime < LOGIN_EXPIRE_TIME;
+    // };
+    console.log('로그인 유지 중');
+    const user = yield model_1.UserModel.findById(userId);
+    console.log(user);
+    res.status(200).send(user);
+    // if (isSessionValid(authTime)) {
+    // } else {
+    //   console.log('로그인 만료됨');
+    //   res.status(401).send('로그인 만료됨');
+    // }
 }));
 //User
 app.get('/users', (_, res) => __awaiter(void 0, void 0, void 0, function* () {
     const users = yield model_1.UserModel.find();
     res.json(users);
+}));
+app.get('/users/search', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const query = req.query;
+    const searchConditions = {};
+    console.log(query);
+    if (query.position === '전체') {
+        try {
+            const users = yield model_1.UserModel.find();
+            res.json(users);
+            return;
+        }
+        catch (error) {
+            console.error(error);
+            res.status(500).send('서버 에러');
+            return;
+        }
+    }
+    if (query.position) {
+        searchConditions.position = query.position;
+    }
+    if (query.skills && query.skills.length > 0) {
+        searchConditions.skills = { $in: query.skills };
+    }
+    if (query.carrear) {
+        searchConditions.carrear = query.carrear;
+    }
+    if (query.isOnline !== undefined) {
+        searchConditions.isOnline = query.isOnline === 'true'; // 문자열을 불리언으로 변환
+        console.log(searchConditions.isOnline);
+    }
+    if (query.firstArea) {
+        searchConditions.firstArea = query.firstArea;
+    }
+    if (query.secondArea) {
+        searchConditions.secondArea = query.secondArea;
+    }
+    if (query.q) {
+        searchConditions.$or = [
+            { name: { $regex: query.q, $options: 'i' } },
+            { email: { $regex: query.q, $options: 'i' } },
+        ];
+    }
+    console.log(searchConditions);
+    try {
+        const users = yield model_1.UserModel.find(searchConditions);
+        res.json(users);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).send('서버 에러');
+    }
 }));
 app.post('/user/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const user = yield model_1.UserModel.findOne({
