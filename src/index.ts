@@ -163,8 +163,6 @@ app.get('/users/search', async (req, res) => {
 
   if (query.isOnline !== undefined) {
     searchConditions.isOnline = query.isOnline === 'true'; // 문자열을 불리언으로 변환
-
-    console.log(searchConditions.isOnline);
   }
 
   if (query.firstArea) {
@@ -256,10 +254,6 @@ app.get('/chat/rooms', async (req, res) => {
         const messages = await MessageModel.find({
           roomId: room.roomId,
         });
-
-        console.log(messages.length);
-
-        console.log(messages[messages.length - 1]);
 
         const lastMessage = messages[messages.length - 1];
 
