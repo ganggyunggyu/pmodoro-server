@@ -75,14 +75,20 @@ const UserSchema = new Schema(
   { timestamps: true },
 );
 
-const projectSchema = new mongoose.Schema(
+const ProjectSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-    startYear: { type: String, required: true },
-    startMonth: { type: String, required: true },
-    endYear: { type: String, required: true },
-    endMonth: { type: String, required: true },
+    position: { type: String, required: true },
+    duration: {
+      startDate: { type: Date, required: true },
+      endDate: { type: Date, required: true },
+    },
     description: { type: String, required: true },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId, // ObjectId로 참조
+      ref: 'User', // 'User' 모델을 참조
+      required: true,
+    },
   },
   {
     timestamps: true,
@@ -111,6 +117,6 @@ const ChatRoomSchema = new mongoose.Schema(
 );
 
 export const UserModel = mongoose.model('User', UserSchema);
-export const ProjectModel = mongoose.model('Project', projectSchema);
+export const ProjectModel = mongoose.model('Project', ProjectSchema);
 export const ChatRoomModel = mongoose.model('ChatRoom', ChatRoomSchema);
 export const MessageModel = mongoose.model('Message', MessageSchema);
