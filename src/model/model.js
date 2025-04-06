@@ -73,13 +73,19 @@ const UserSchema = new mongoose_1.Schema({
     phoneNumber: { type: String },
     kakaoAuthInfo: { type: KakaoAuthInfoSchema, required: false },
 }, { timestamps: true });
-const projectSchema = new mongoose_1.default.Schema({
+const ProjectSchema = new mongoose_1.default.Schema({
     name: { type: String, required: true },
-    startYear: { type: String, required: true },
-    startMonth: { type: String, required: true },
-    endYear: { type: String, required: true },
-    endMonth: { type: String, required: true },
+    position: { type: String, required: true },
+    duration: {
+        startDate: { type: Date, required: true },
+        endDate: { type: Date, required: true },
+    },
     description: { type: String, required: true },
+    userId: {
+        type: mongoose_1.default.Schema.Types.ObjectId, // ObjectId로 참조
+        ref: 'User', // 'User' 모델을 참조
+        required: true,
+    },
 }, {
     timestamps: true,
 });
@@ -101,6 +107,6 @@ const ChatRoomSchema = new mongoose_1.default.Schema({
     timestamps: true,
 });
 exports.UserModel = mongoose_1.default.model('User', UserSchema);
-exports.ProjectModel = mongoose_1.default.model('Project', projectSchema);
+exports.ProjectModel = mongoose_1.default.model('Project', ProjectSchema);
 exports.ChatRoomModel = mongoose_1.default.model('ChatRoom', ChatRoomSchema);
 exports.MessageModel = mongoose_1.default.model('Message', MessageSchema);
