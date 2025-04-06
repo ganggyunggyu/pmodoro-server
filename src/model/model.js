@@ -51,6 +51,12 @@ const KakaoAuthInfoSchema = new mongoose_1.Schema({
     iss: { type: String, required: true },
     sub: { type: String, required: true },
     aud: { type: String, required: true },
+    access_token: { type: String, required: true },
+    token_type: { type: String, required: true },
+    refresh_token: { type: String, required: true },
+    expires_in: { type: Number, required: true },
+    scope: { type: String, required: true },
+    refresh_token_expires_in: { type: Number, required: true },
 });
 // UserSchema 정의
 const UserSchema = new mongoose_1.Schema({

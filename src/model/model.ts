@@ -19,6 +19,14 @@ type KakaoAuthInfo = {
   iss: string;
   sub: string;
   aud: string;
+
+  access_token: string;
+  token_type: string;
+  refresh_token: string;
+
+  expires_in: number;
+  scope: string;
+  refresh_token_expires_in: number;
 };
 
 export type Message = {
@@ -37,6 +45,13 @@ const KakaoAuthInfoSchema = new Schema<KakaoAuthInfo>({
   iss: { type: String, required: true },
   sub: { type: String, required: true },
   aud: { type: String, required: true },
+
+  access_token: { type: String, required: true },
+  token_type: { type: String, required: true },
+  refresh_token: { type: String, required: true },
+  expires_in: { type: Number, required: true },
+  scope: { type: String, required: true },
+  refresh_token_expires_in: { type: Number, required: true },
 });
 
 // UserSchema 정의

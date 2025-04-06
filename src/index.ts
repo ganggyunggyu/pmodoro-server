@@ -76,12 +76,13 @@ app.get('/auth/kakao-callback', async (req, res) => {
         },
       },
     );
-
     const idToken = result.data.id_token;
     if (!idToken) res.status(400).json({ error: 'id_token이 없습니다.' });
 
+    // const kakaoAuthInfo = { ...decodeJwt(idToken), ...kakaoAuthData };
     const kakaoAuthInfo = decodeJwt(idToken);
 
+    console.log(kakaoAuthInfo);
     const displayName = kakaoAuthInfo.nickname;
 
     const { kakaoId } = kakaoAuthInfo;
@@ -95,10 +96,33 @@ app.get('/auth/kakao-callback', async (req, res) => {
       res.json({ displayName, kakaoAuthInfo, isUser: false });
     }
   } catch (error: any) {
-    console.error('카카오 토큰 요청 실패:', error.response?.data);
+    console.error('카카오 토큰 요청 실패:', error.response);
     res
       .status(400)
       .json({ error: '카카오 토큰 요청 실패', details: error.response?.data });
+  }
+});
+
+app.get('/auth/login-check/kakao', async (req, res) => {
+  const LOGIN_EXPIRE_TIME = 3600; // 로그인 유효시간 1시간 (초 단위)
+  console.log(req.query);
+  // req.query.auth_time을 숫자형으로 변환
+  const authTime = parseInt(req.query.auth_time as string, 10);
+  const userId = req.query.userId;
+
+  const isSessionValid = (authTime: number): boolean => {
+    const currentTime = Math.floor(Date.now() / 1000); // 현재 시간 (초 단위)
+    return currentTime - authTime < LOGIN_EXPIRE_TIME; // 유효시간 이내인지 확인
+  };
+
+  if (isSessionValid(authTime)) {
+    console.log('로그인 유지 중');
+    const user = await UserModel.findById(userId);
+    console.log(user);
+    res.status(200).send(user);
+  } else {
+    console.log('로그인 만료됨');
+    res.status(401).send('로그인 만료됨');
   }
 });
 
@@ -108,6 +132,12 @@ app.get('/users', async (_, res) => {
   const users = await UserModel.find();
 
   res.json(users);
+});
+
+const SearchQueryType = {};
+
+app.get('/users/search', async (req, res) => {
+  const query = req.query;
 });
 
 app.post('/user/login', async (req, res) => {

@@ -54,7 +54,7 @@ app.use(express_1.default.json());
 //라우트 정의
 //Auth
 app.get('/auth/kakao-callback', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
+    var _a;
     const code = req.query.code;
     if (!code)
         res.status(400).json({ error: '인증 코드가 없습니다.' });
@@ -70,10 +70,13 @@ app.get('/auth/kakao-callback', (req, res) => __awaiter(void 0, void 0, void 0, 
                 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
             },
         });
+        const kakaoAuthData = result;
         const idToken = result.data.id_token;
         if (!idToken)
             res.status(400).json({ error: 'id_token이 없습니다.' });
+        // const kakaoAuthInfo = { ...decodeJwt(idToken), ...kakaoAuthData };
         const kakaoAuthInfo = (0, decode_jwt_1.decodeJwt)(idToken);
+        console.log(kakaoAuthInfo);
         const displayName = kakaoAuthInfo.nickname;
         const { kakaoId } = kakaoAuthInfo;
         if (!kakaoId)
@@ -87,10 +90,30 @@ app.get('/auth/kakao-callback', (req, res) => __awaiter(void 0, void 0, void 0, 
         }
     }
     catch (error) {
-        console.error('카카오 토큰 요청 실패:', (_a = error.response) === null || _a === void 0 ? void 0 : _a.data);
+        console.error('카카오 토큰 요청 실패:', error.response);
         res
             .status(400)
-            .json({ error: '카카오 토큰 요청 실패', details: (_b = error.response) === null || _b === void 0 ? void 0 : _b.data });
+            .json({ error: '카카오 토큰 요청 실패', details: (_a = error.response) === null || _a === void 0 ? void 0 : _a.data });
+    }
+}));
+app.get('auth/login-check/kakao', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const LOGIN_EXPIRE_TIME = 3600; // 로그인 유효시간 1시간 (초 단위)
+    console.log('refresh');
+    // req.query.auth_time을 숫자형으로 변환
+    const authTime = parseInt(req.query.auth_time, 10);
+    const userId = req.query.userId;
+    const isSessionValid = (authTime) => {
+        const currentTime = Math.floor(Date.now() / 1000); // 현재 시간 (초 단위)
+        return currentTime - authTime < LOGIN_EXPIRE_TIME; // 유효시간 이내인지 확인
+    };
+    if (isSessionValid(authTime)) {
+        console.log('로그인 유지 중');
+        const user = yield model_1.UserModel.findById(userId);
+        res.status(200).send(user);
+    }
+    else {
+        console.log('로그인 만료됨');
+        res.status(401).send('로그인 만료됨');
     }
 }));
 //User
