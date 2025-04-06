@@ -6,7 +6,13 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { decodeJwt } from './shared/lib/decode-jwt';
 import { mongoConnect } from './db/mongoConnect';
-import { ChatRoomModel, Message, MessageModel, UserModel } from './model/model';
+import {
+  ChatRoomModel,
+  Message,
+  MessageModel,
+  ProjectModel,
+  UserModel,
+} from './model/model';
 
 const {
   PORT,
@@ -17,6 +23,7 @@ const {
 } = process.env;
 
 const app = express();
+
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
@@ -315,6 +322,68 @@ app.get('/chat/messages', async (req, res) => {
   } catch (error) {
     console.error('메시지 조회 실패:', error);
     res.status(500).json({ error: '메시지 조회 중 오류 발생' });
+  }
+});
+
+// Project
+
+app.get('/project/:userId', async (req, res) => {
+  const params = req.params;
+  const { userId } = params;
+  const projectList = await ProjectModel.find({
+    userId: userId,
+  });
+  res.status(200).json(projectList);
+});
+
+app.post('/project', async (req, res) => {
+  const project = req.body;
+  try {
+    const createProject = await ProjectModel.create(project);
+
+    res.status(200).json(createProject);
+  } catch (error) {
+    console.error(error);
+  }
+});
+
+app.delete('/project/:projectId', async (req, res) => {
+  const { projectId } = req.params;
+
+  try {
+    // 프로젝트 삭제
+    const deletedProject = await ProjectModel.findByIdAndDelete(projectId);
+
+    if (!deletedProject) {
+      res.status(404).json({ message: '프로젝트를 찾을 수 없습니다.' });
+    }
+
+    res.status(200).json({ message: '프로젝트가 삭제되었습니다.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: '프로젝트 삭제 중 오류가 발생했습니다.' });
+  }
+});
+
+app.patch('/project/:projectId', async (req, res) => {
+  const { projectId } = req.params;
+  const updatedFields = req.body;
+
+  try {
+    const project = await ProjectModel.findByIdAndUpdate(
+      projectId,
+      updatedFields,
+      { new: true },
+    );
+
+    if (!project) {
+      res.status(404).json({ message: '프로젝트를 찾을 수 없습니다.' });
+    }
+
+    res.status(200).json(project);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: '프로젝트 수정 중 오류가 발생했습니다.' });
   }
 });
 

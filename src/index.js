@@ -121,21 +121,8 @@ app.get('/users', (_, res) => __awaiter(void 0, void 0, void 0, function* () {
 app.get('/users/search', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const query = req.query;
     const searchConditions = {};
-    console.log(query);
-    if (query.position === '전체') {
-        try {
-            const users = yield model_1.UserModel.find();
-            res.json(users);
-            return;
-        }
-        catch (error) {
-            console.error(error);
-            res.status(500).send('서버 에러');
-            return;
-        }
-    }
-    if (query.position) {
-        searchConditions.position = query.position;
+    if (query.position && query.position !== '전체') {
+        searchConditions.position = query.position; // '전체'가 아닌 경우에만 position 추가
     }
     if (query.skills && query.skills.length > 0) {
         searchConditions.skills = { $in: query.skills };
@@ -145,7 +132,6 @@ app.get('/users/search', (req, res) => __awaiter(void 0, void 0, void 0, functio
     }
     if (query.isOnline !== undefined) {
         searchConditions.isOnline = query.isOnline === 'true'; // 문자열을 불리언으로 변환
-        console.log(searchConditions.isOnline);
     }
     if (query.firstArea) {
         searchConditions.firstArea = query.firstArea;
@@ -212,8 +198,6 @@ app.get('/chat/rooms', (req, res) => __awaiter(void 0, void 0, void 0, function*
             const messages = yield model_1.MessageModel.find({
                 roomId: room.roomId,
             });
-            console.log(messages.length);
-            console.log(messages[messages.length - 1]);
             const lastMessage = messages[messages.length - 1];
             return Object.assign(Object.assign({}, room.toObject()), { otherUser: otherUserInfos, lastMessage });
         })));
@@ -260,6 +244,55 @@ app.get('/chat/messages', (req, res) => __awaiter(void 0, void 0, void 0, functi
     catch (error) {
         console.error('메시지 조회 실패:', error);
         res.status(500).json({ error: '메시지 조회 중 오류 발생' });
+    }
+}));
+// Project
+app.get('/project/:userId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const params = req.params;
+    const { userId } = params;
+    const projectList = yield model_1.ProjectModel.find({
+        userId: userId,
+    });
+    res.status(200).json(projectList);
+}));
+app.post('/project', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const project = req.body;
+    try {
+        const createProject = yield model_1.ProjectModel.create(project);
+        res.status(200).json(createProject);
+    }
+    catch (error) {
+        console.error(error);
+    }
+}));
+app.delete('/project/:projectId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { projectId } = req.params;
+    try {
+        // 프로젝트 삭제
+        const deletedProject = yield model_1.ProjectModel.findByIdAndDelete(projectId);
+        if (!deletedProject) {
+            res.status(404).json({ message: '프로젝트를 찾을 수 없습니다.' });
+        }
+        res.status(200).json({ message: '프로젝트가 삭제되었습니다.' });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: '프로젝트 삭제 중 오류가 발생했습니다.' });
+    }
+}));
+app.patch('/project/:projectId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { projectId } = req.params;
+    const updatedFields = req.body;
+    try {
+        const project = yield model_1.ProjectModel.findByIdAndUpdate(projectId, updatedFields, { new: true });
+        if (!project) {
+            res.status(404).json({ message: '프로젝트를 찾을 수 없습니다.' });
+        }
+        res.status(200).json(project);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: '프로젝트 수정 중 오류가 발생했습니다.' });
     }
 }));
 (0, mongoConnect_1.mongoConnect)()
