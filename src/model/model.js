@@ -43,20 +43,20 @@ const MessageSchema = new mongoose_1.default.Schema({
 }, { timestamps: true });
 // KakaoAuthInfo 서브스키마 정의
 const KakaoAuthInfoSchema = new mongoose_1.Schema({
-    kakaoId: { type: String, required: true },
+    kakaoId: { type: String, required: false },
     profileImg: { type: String, required: false },
-    auth_time: { type: Number, required: true },
-    exp: { type: Number, required: true },
-    iat: { type: Number, required: true },
-    iss: { type: String, required: true },
-    sub: { type: String, required: true },
-    aud: { type: String, required: true },
-    access_token: { type: String, required: true },
-    token_type: { type: String, required: true },
-    refresh_token: { type: String, required: true },
-    expires_in: { type: Number, required: true },
-    scope: { type: String, required: true },
-    refresh_token_expires_in: { type: Number, required: true },
+    auth_time: { type: Number, required: false },
+    exp: { type: Number, required: false },
+    iat: { type: Number, required: false },
+    iss: { type: String, required: false },
+    sub: { type: String, required: false },
+    aud: { type: String, required: false },
+    access_token: { type: String, required: false },
+    token_type: { type: String, required: false },
+    refresh_token: { type: String, required: false },
+    expires_in: { type: Number, required: false },
+    scope: { type: String, required: false },
+    refresh_token_expires_in: { type: Number, required: false },
 });
 // UserSchema 정의
 const UserSchema = new mongoose_1.Schema({
