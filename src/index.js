@@ -16,18 +16,17 @@ const express_1 = __importDefault(require("express"));
 const axios_1 = __importDefault(require("axios"));
 const cors_1 = __importDefault(require("cors"));
 const mongoose_1 = __importDefault(require("mongoose"));
-const http_1 = require("http");
+const https_1 = require("https");
 const socket_io_1 = require("socket.io");
 const decode_jwt_1 = require("./shared/lib/decode-jwt");
 const mongoConnect_1 = require("./db/mongoConnect");
 const model_1 = require("./model/model");
 const { PORT, SOCKET_PORT, KAKAO_GRANT_TYPE, KAKAO_CLIENT_ID, KAKAO_REDIRECT_URI, } = process.env;
 const app = (0, express_1.default)();
-const server = (0, http_1.createServer)(app);
+const server = (0, https_1.createServer)(app);
 const io = new socket_io_1.Server(server, {
     cors: {
-        origin: '*',
-        credentials: true,
+        origin: 'https://pmodoro-client.vercel.app',
     },
 });
 //서버 셋팅
@@ -54,7 +53,8 @@ app.use(express_1.default.json());
 //라우트 정의
 //Auth
 app.get('/auth/kakao-callback', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _a, _b;
+    console.log(req.query.redirect_uri);
     const code = req.query.code;
     if (!code)
         res.status(400).json({ error: '인증 코드가 없습니다.' });
@@ -74,7 +74,6 @@ app.get('/auth/kakao-callback', (req, res) => __awaiter(void 0, void 0, void 0, 
         if (!idToken)
             res.status(400).json({ error: 'id_token이 없습니다.' });
         const kakaoAuthInfo = (0, decode_jwt_1.decodeJwt)(idToken);
-        console.log(kakaoAuthInfo);
         const displayName = kakaoAuthInfo.nickname;
         const { kakaoId } = kakaoAuthInfo;
         if (!kakaoId)
@@ -88,28 +87,25 @@ app.get('/auth/kakao-callback', (req, res) => __awaiter(void 0, void 0, void 0, 
         }
     }
     catch (error) {
-        console.error('카카오 토큰 요청 실패:', error.response);
+        console.error('카카오 토큰 요청 실패:', (_a = error.response) === null || _a === void 0 ? void 0 : _a.data);
         res
             .status(400)
-            .json({ error: '카카오 토큰 요청 실패', details: (_a = error.response) === null || _a === void 0 ? void 0 : _a.data });
+            .json({ error: '카카오 토큰 요청 실패', details: (_b = error.response) === null || _b === void 0 ? void 0 : _b.data });
     }
 }));
 app.get('/auth/login-check/kakao', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // const LOGIN_EXPIRE_TIME = 3600;
-    console.log(req.query);
     // const authTime = parseInt(req.query.auth_time as string, 10);
     const userId = req.query.userId;
     // const isSessionValid = (authTime: number): boolean => {
     //   const currentTime = Math.floor(Date.now() / 1000);
     //   return currentTime - authTime < LOGIN_EXPIRE_TIME;
     // };
-    console.log('로그인 유지 중');
     const user = yield model_1.UserModel.findById(userId);
-    console.log(user);
     res.status(200).send(user);
     // if (isSessionValid(authTime)) {
     // } else {
-    //   console.log('로그인 만료됨');
+    //
     //   res.status(401).send('로그인 만료됨');
     // }
 }));
@@ -145,7 +141,6 @@ app.get('/users/search', (req, res) => __awaiter(void 0, void 0, void 0, functio
             { email: { $regex: query.q, $options: 'i' } },
         ];
     }
-    console.log(searchConditions);
     try {
         const users = yield model_1.UserModel.find(searchConditions);
         res.json(users);
@@ -171,7 +166,6 @@ app.get('/user/:userId', (req, res) => __awaiter(void 0, void 0, void 0, functio
 }));
 app.post('/user/join', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const signupData = req.body;
-    console.log(signupData);
     const newUser = new model_1.UserModel(Object.assign({}, signupData));
     yield newUser.save();
     res.json({ userInfo: newUser });
@@ -297,10 +291,10 @@ app.patch('/project/:projectId', (req, res) => __awaiter(void 0, void 0, void 0,
 }));
 (0, mongoConnect_1.mongoConnect)()
     .then(() => {
-    app.listen(PORT, () => { });
-    console.log(`${PORT}포트 서버 연결`);
-    server.listen(SOCKET_PORT, () => { });
-    console.log(`${SOCKET_PORT}포트 소켓서버 연결`);
+    // app.listen(PORT, () => {});
+    server.listen(PORT, () => {
+        console.log(`${PORT} 포트에서 실행`);
+    });
 })
     .catch((error) => {
     console.error(error);

@@ -28,7 +28,6 @@ const server = createServer(app);
 const io = new Server(server, {
   cors: {
     origin: '*',
-    credentials: true,
   },
 });
 //서버 셋팅
@@ -63,6 +62,7 @@ app.use(express.json());
 //Auth
 
 app.get('/auth/kakao-callback', async (req, res) => {
+  console.log(req.query.redirect_uri as string);
   const code = req.query.code as string;
   if (!code) res.status(400).json({ error: '인증 코드가 없습니다.' });
 
@@ -88,7 +88,6 @@ app.get('/auth/kakao-callback', async (req, res) => {
 
     const kakaoAuthInfo = decodeJwt(idToken);
 
-    console.log(kakaoAuthInfo);
     const displayName = kakaoAuthInfo.nickname;
 
     const { kakaoId } = kakaoAuthInfo;
@@ -102,7 +101,7 @@ app.get('/auth/kakao-callback', async (req, res) => {
       res.json({ displayName, kakaoAuthInfo, isUser: false });
     }
   } catch (error: any) {
-    console.error('카카오 토큰 요청 실패:', error.response);
+    console.error('카카오 토큰 요청 실패:', error.response?.data);
     res
       .status(400)
       .json({ error: '카카오 토큰 요청 실패', details: error.response?.data });
@@ -111,7 +110,6 @@ app.get('/auth/kakao-callback', async (req, res) => {
 
 app.get('/auth/login-check/kakao', async (req, res) => {
   // const LOGIN_EXPIRE_TIME = 3600;
-  console.log(req.query);
 
   // const authTime = parseInt(req.query.auth_time as string, 10);
   const userId = req.query.userId;
@@ -121,13 +119,12 @@ app.get('/auth/login-check/kakao', async (req, res) => {
   //   return currentTime - authTime < LOGIN_EXPIRE_TIME;
   // };
 
-  console.log('로그인 유지 중');
   const user = await UserModel.findById(userId);
-  console.log(user);
+
   res.status(200).send(user);
   // if (isSessionValid(authTime)) {
   // } else {
-  //   console.log('로그인 만료됨');
+  //
   //   res.status(401).send('로그인 만료됨');
   // }
 });
@@ -187,8 +184,6 @@ app.get('/users/search', async (req, res) => {
     ];
   }
 
-  console.log(searchConditions);
-
   try {
     const users = await UserModel.find(searchConditions);
     res.json(users);
@@ -217,8 +212,6 @@ app.get('/user/:userId', async (req, res) => {
 
 app.post('/user/join', async (req, res) => {
   const signupData = req.body;
-
-  console.log(signupData);
 
   const newUser = new UserModel({
     ...signupData,
@@ -389,11 +382,9 @@ app.patch('/project/:projectId', async (req, res) => {
 
 mongoConnect()
   .then(() => {
-    app.listen(PORT, () => {});
-    console.log(`${PORT}포트 서버 연결`);
-
-    server.listen(SOCKET_PORT, () => {});
-    console.log(`${SOCKET_PORT}포트 소켓서버 연결`);
+    server.listen(PORT, () => {
+      console.log(`${PORT} 포트에서 실행`);
+    });
   })
   .catch((error) => {
     console.error(error);
