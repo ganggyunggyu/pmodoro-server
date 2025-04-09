@@ -2,7 +2,7 @@ import express from 'express';
 import axios from 'axios';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import { createServer } from 'http';
+import { createServer } from 'https';
 import { Server } from 'socket.io';
 import { decodeJwt } from './shared/lib/decode-jwt';
 import { mongoConnect } from './db/mongoConnect';
