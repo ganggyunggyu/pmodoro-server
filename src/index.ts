@@ -2,7 +2,7 @@ import express from 'express';
 import axios from 'axios';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import { createServer } from 'https';
+import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { decodeJwt } from './shared/lib/decode-jwt';
 import { mongoConnect } from './db/mongoConnect';
@@ -58,6 +58,11 @@ app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 
 //라우트 정의
+
+app.get('/test', async (_, res) => {
+  res.json('서버 연동 완료');
+  console.log('서버 연동 완료');
+});
 
 //Auth
 
