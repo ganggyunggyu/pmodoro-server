@@ -114,24 +114,11 @@ app.get('/auth/kakao-callback', async (req, res) => {
 });
 
 app.get('/auth/login-check/kakao', async (req, res) => {
-  // const LOGIN_EXPIRE_TIME = 3600;
-
-  // const authTime = parseInt(req.query.auth_time as string, 10);
   const userId = req.query.userId;
-
-  // const isSessionValid = (authTime: number): boolean => {
-  //   const currentTime = Math.floor(Date.now() / 1000);
-  //   return currentTime - authTime < LOGIN_EXPIRE_TIME;
-  // };
 
   const user = await UserModel.findById(userId);
 
   res.status(200).send(user);
-  // if (isSessionValid(authTime)) {
-  // } else {
-  //
-  //   res.status(401).send('로그인 만료됨');
-  // }
 });
 
 //User
@@ -225,6 +212,24 @@ app.post('/user/join', async (req, res) => {
   await newUser.save();
 
   res.json({ userInfo: newUser });
+});
+
+app.patch('/user/:userId', async (req, res) => {
+  try {
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      req.params.userId, // 유저 ID로 찾기
+      req.body, // 요청된 body 값으로 부분 업데이트
+      { new: true }, // 수정된 데이터를 반환
+    );
+
+    if (updatedUser) {
+      res.json(updatedUser); // 수정된 유저 정보 반환
+    } else {
+      res.status(404).json({ message: '유저를 찾을 수 없습니다.' }); // 유저 없을 경우
+    }
+  } catch (err) {
+    res.status(500).json({ message: '유저 정보 수정 실패', error: err });
+  }
 });
 
 //Chat

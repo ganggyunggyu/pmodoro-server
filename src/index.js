@@ -26,7 +26,7 @@ const app = (0, express_1.default)();
 const server = (0, https_1.createServer)(app);
 const io = new socket_io_1.Server(server, {
     cors: {
-        origin: 'https://pmodoro-client.vercel.app',
+        origin: '*',
     },
 });
 //서버 셋팅
@@ -291,7 +291,6 @@ app.patch('/project/:projectId', (req, res) => __awaiter(void 0, void 0, void 0,
 }));
 (0, mongoConnect_1.mongoConnect)()
     .then(() => {
-    // app.listen(PORT, () => {});
     server.listen(PORT, () => {
         console.log(`${PORT} 포트에서 실행`);
     });
